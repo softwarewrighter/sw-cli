@@ -2,6 +2,21 @@
 
 This guide explains how to integrate the `sw-cli` crate into your Rust CLI projects to provide standardized version information output.
 
+## Quick Start
+
+The `sw-cli` repository includes helper scripts for common tasks:
+
+```bash
+# Build all crates in the workspace
+./scripts/build.sh
+
+# Run the demo example (shows macro usage)
+./scripts/demo.sh
+
+# Run all tests and checks
+./scripts/test.sh
+```
+
 ## Adding sw-cli as a Git Submodule
 
 ### 1. Add the Submodule
@@ -26,43 +41,55 @@ sw-cli = { path = "lib/sw-cli" }
 
 ## Using the Version Module
 
-### Basic Usage
+### Recommended: Using Macros (Simplest Approach)
 
-In your CLI application's `main.rs`:
+The easiest way to add version information is using the provided macros:
+
+#### 1. Add build.rs to your project
 
 ```rust
-use sw_cli::version::{BuildInfo, Version};
+use sw_cli::define_build_info;
+
+fn main() {
+    define_build_info!();
+}
+```
+
+This single macro call automatically captures hostname, git commit SHA, and build timestamp.
+
+#### 2. Use the macro in main.rs
+
+```rust
+use sw_cli::create_version;
 
 fn main() {
     // Handle -V or --version flags
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 && (args[1] == "-V" || args[1] == "--version") {
-        let version = create_version_info();
+        let version = create_version!(
+            copyright: "Copyright (c) 2025 Your Name or Organization",
+            license_url: "https://github.com/yourusername/yourrepo/blob/main/LICENSE"
+        );
         println!("{}", version);
         return;
     }
 
     // Rest of your CLI logic
 }
-
-fn create_version_info() -> Version {
-    let build_info = BuildInfo::new(
-        env!("BUILD_HOST").to_string(),
-        env!("GIT_COMMIT_SHA").to_string(),
-        env!("BUILD_TIMESTAMP").parse().unwrap(),
-    );
-
-    Version::new(
-        format!("Copyright (c) {} Your Name or Organization", env!("BUILD_YEAR")),
-        "https://github.com/yourusername/yourrepo/blob/main/LICENSE".to_string(),
-        build_info,
-    )
-}
 ```
 
-### Setting Build-Time Environment Variables
+See the `examples/demo-cli/` directory for a complete working example that demonstrates the macro usage.
 
-Create a `build.rs` file in your project root to capture build information:
+To run the example:
+```bash
+./scripts/demo.sh
+```
+
+### Alternative: Manual Construction (More Control)
+
+If you need more control over the build process, you can manually construct the version info:
+
+#### 1. Create build.rs manually
 
 ```rust
 use std::process::Command;
@@ -93,30 +120,49 @@ fn main() {
 
     println!("cargo:rustc-env=BUILD_TIMESTAMP={}", timestamp);
 
-    // Get current year for copyright
-    let year = chrono::Utc::now().year();
-    println!("cargo:rustc-env=BUILD_YEAR={}", year);
-
     // Re-run if git HEAD changes
     println!("cargo:rerun-if-changed=.git/HEAD");
 }
 ```
 
-If using `chrono` for the year, add it to your `Cargo.toml` build dependencies:
+#### 2. Manually construct Version in main.rs
 
-```toml
-[build-dependencies]
-chrono = "0.4"
+```rust
+use sw_cli::version::{BuildInfo, Version};
+
+fn main() {
+    // Handle -V or --version flags
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 && (args[1] == "-V" || args[1] == "--version") {
+        let version = create_version_info();
+        println!("{}", version);
+        return;
+    }
+
+    // Rest of your CLI logic
+}
+
+fn create_version_info() -> Version {
+    let build_info = BuildInfo::new(
+        env!("BUILD_HOST").to_string(),
+        env!("GIT_COMMIT_SHA").to_string(),
+        env!("BUILD_TIMESTAMP").parse().unwrap(),
+    );
+
+    Version::new(
+        "Copyright (c) 2025 Your Name or Organization".to_string(),
+        "https://github.com/yourusername/yourrepo/blob/main/LICENSE".to_string(),
+        build_info,
+    )
+}
 ```
-
-Alternatively, you can hardcode the year in your `main.rs` instead of using `env!("BUILD_YEAR")`.
 
 ### Example Output
 
 When a user runs your CLI with `-V` or `--version`, they will see:
 
 ```
-Copyright (c) 2024 Your Name or Organization
+Copyright (c) 2025 Your Name or Organization
 License: https://github.com/yourusername/yourrepo/blob/main/LICENSE
 
 Build Information:
@@ -128,6 +174,35 @@ Build Information:
 ## Integration with CLI Argument Parsers
 
 ### Using with `clap`
+
+With macros:
+
+```rust
+use clap::Parser;
+use sw_cli::create_version;
+
+#[derive(Parser)]
+#[command(name = "mycli")]
+#[command(version = create_version_string())]
+struct Cli {
+    // Your CLI arguments
+}
+
+fn create_version_string() -> String {
+    let version = create_version!(
+        copyright: "Copyright (c) 2025 Your Name",
+        license_url: "https://github.com/yourusername/yourrepo/blob/main/LICENSE"
+    );
+    format!("{}", version)
+}
+
+fn main() {
+    let cli = Cli::parse();
+    // Your CLI logic
+}
+```
+
+Or manually:
 
 ```rust
 use clap::Parser;
@@ -148,7 +223,7 @@ fn create_version_string() -> String {
     );
 
     let version = Version::new(
-        format!("Copyright (c) {} Your Name", env!("BUILD_YEAR")),
+        "Copyright (c) 2025 Your Name".to_string(),
         "https://github.com/yourusername/yourrepo/blob/main/LICENSE".to_string(),
         build_info,
     );

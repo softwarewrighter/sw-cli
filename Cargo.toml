@@ -1,6 +1,11 @@
+[workspace]
+members = ["sw-cli-macros", "examples/demo-cli"]
+resolver = "2"
+
 [package]
 name = "sw-cli"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+sw-cli-macros = { path = "sw-cli-macros" }
