@@ -1,7 +1,12 @@
 [package]
 name = "demo-cli"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/softwarewrighter/sw-cli"
 
 [dependencies]
+sw-cli = { path = "../.." }
+
+[build-dependencies]
 sw-cli = { path = "../.." }

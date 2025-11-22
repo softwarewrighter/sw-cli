@@ -1,103 +1,120 @@
 use proc_macro::TokenStream;
 use quote::quote;
 
-/// Creates a Version instance with build information captured at compile time.
+/// Returns a formatted version string with build information.
 ///
 /// # Usage
 ///
 /// ```ignore
-/// use sw_cli::create_version;
-///
-/// let version = create_version!(
-///     copyright: "Copyright (c) 2025 Your Name",
-///     license_name: "MIT",
-///     license_url: "https://github.com/yourusername/repo/blob/main/LICENSE"
-/// );
-///
-/// println!("{}", version);
+/// fn main() {
+///     if args[1] == "--version" {
+///         println!("{}", sw_cli::version!());
+///         return;
+///     }
+/// }
 /// ```
 ///
-/// The macro automatically captures:
-/// - Build hostname from the `BUILD_HOST` environment variable
-/// - Git commit SHA from the `GIT_COMMIT_SHA` environment variable
-/// - Build timestamp from the `BUILD_TIMESTAMP` environment variable
+/// # Output Format (4 lines)
+/// ```text
+/// Version: 0.1.1
+/// Copyright (c) 2025 Your Name
+/// MIT License: https://github.com/youruser/repo/blob/main/LICENSE
+/// Build: a84bf9a @ hostname (2025-11-22T21:48:21.062+00:00)
+/// ```
 ///
-/// These should be set in your build.rs script.
+/// Requires `sw_cli::define_build_info!()` to be called in build.rs.
 #[proc_macro]
-pub fn create_version(input: TokenStream) -> TokenStream {
-    let input_str = input.to_string();
-
-    // Parse the input to extract copyright, license_name and license_url
-    let mut copyright = None;
-    let mut license_name = None;
-    let mut license_url = None;
-
-    for pair in input_str.split(',') {
-        let pair = pair.trim();
-        if let Some(value) = pair.strip_prefix("copyright:") {
-            copyright = Some(value.trim().trim_matches('"'));
-        } else if let Some(value) = pair.strip_prefix("license_name:") {
-            license_name = Some(value.trim().trim_matches('"'));
-        } else if let Some(value) = pair.strip_prefix("license_url:") {
-            license_url = Some(value.trim().trim_matches('"'));
-        }
-    }
-
-    let copyright = copyright.expect("copyright field is required");
-    let license_name = license_name.expect("license_name field is required");
-    let license_url = license_url.expect("license_url field is required");
-
+pub fn version(_input: TokenStream) -> TokenStream {
     let expanded = quote! {
         {
+            // Include the generated version_info.rs
+            mod __version_info {
+                include!(concat!(env!("OUT_DIR"), "/version_info.rs"));
+            }
+
+            // Construct Version and return formatted string
             let build_info = ::sw_cli::version::BuildInfo::new(
-                ::std::env!("BUILD_HOST").to_string(),
-                ::std::env!("GIT_COMMIT_SHA").to_string(),
-                ::std::env!("BUILD_TIMESTAMP").parse().expect("BUILD_TIMESTAMP must be a valid i64"),
+                __version_info::BUILD_HOST.to_string(),
+                __version_info::GIT_COMMIT_SHA.to_string(),
+                __version_info::BUILD_TIMESTAMP,
             );
 
-            ::sw_cli::version::Version::new(
-                ::std::env!("CARGO_PKG_VERSION").to_string(),
-                #copyright.to_string(),
-                #license_name.to_string(),
-                #license_url.to_string(),
+            let version_obj = ::sw_cli::version::Version::new(
+                __version_info::VERSION.to_string(),
+                __version_info::COPYRIGHT.to_string(),
+                __version_info::LICENSE_NAME.to_string(),
+                __version_info::LICENSE_URL.to_string(),
                 build_info,
-            )
+            );
+
+            format!("{}", version_obj)
         }
     };
 
     TokenStream::from(expanded)
 }
 
-/// Defines build-time environment variables for version information.
+/// Deprecated: Use `version!()` instead.
+#[proc_macro]
+pub fn create_version(input: TokenStream) -> TokenStream {
+    // Keep for backward compatibility but emit deprecation
+    version(input)
+}
+
+/// Generates version_info.rs with build metadata as const literals.
 ///
-/// This macro should be called in your build.rs file to capture build metadata.
+/// This macro should be called in your build.rs file to generate version information.
 ///
 /// # Usage in build.rs
 ///
 /// ```ignore
-/// use sw_cli::define_build_info;
-///
 /// fn main() {
-///     define_build_info!();
+///     sw_cli::define_build_info!();
 /// }
 /// ```
 ///
-/// This will automatically set:
-/// - `BUILD_HOST` - hostname where the build occurred
-/// - `GIT_COMMIT_SHA` - current git commit SHA
-/// - `BUILD_TIMESTAMP` - milliseconds since epoch
+/// # Requirements
+/// - COPYRIGHT file in project root
+/// - Cargo.toml with version, license, repository fields
+///
+/// # Generates
+/// Creates `$OUT_DIR/version_info.rs` with const literals for runtime use.
+/// Always runs on every build (unique timestamp per build).
 #[proc_macro]
 pub fn define_build_info(_input: TokenStream) -> TokenStream {
     let expanded = quote! {
         {
             use std::process::Command;
+            use std::fs;
+            use std::path::Path;
+
+            let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set");
+            let dest_path = Path::new(&out_dir).join("version_info.rs");
+
+            // Read COPYRIGHT file
+            let copyright = fs::read_to_string("COPYRIGHT")
+                .expect("COPYRIGHT file not found")
+                .trim()
+                .to_string();
+
+            // Get version from Cargo
+            let version = std::env::var("CARGO_PKG_VERSION")
+                .expect("CARGO_PKG_VERSION not set");
+
+            // Get license from Cargo
+            let license_name = std::env::var("CARGO_PKG_LICENSE")
+                .expect("CARGO_PKG_LICENSE not set");
+
+            // Get repository from Cargo
+            let repository = std::env::var("CARGO_PKG_REPOSITORY")
+                .expect("CARGO_PKG_REPOSITORY not set");
+            let license_url = format!("{}/blob/main/LICENSE", repository);
 
             // Get hostname
             let hostname = Command::new("hostname")
                 .output()
                 .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
                 .unwrap_or_else(|_| "unknown".to_string());
-            println!("cargo:rustc-env=BUILD_HOST={}", hostname);
 
             // Get git commit SHA
             let commit_sha = Command::new("git")
@@ -105,17 +122,33 @@ pub fn define_build_info(_input: TokenStream) -> TokenStream {
                 .output()
                 .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
                 .unwrap_or_else(|_| "unknown".to_string());
-            println!("cargo:rustc-env=GIT_COMMIT_SHA={}", commit_sha);
 
-            // Get build timestamp
+            // Get build timestamp (always fresh, every build)
             let timestamp = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_millis();
-            println!("cargo:rustc-env=BUILD_TIMESTAMP={}", timestamp);
+                .as_millis() as i64;
 
-            // Re-run if git HEAD changes
-            println!("cargo:rerun-if-changed=.git/HEAD");
+            // Generate version_info.rs
+            let generated_code = format!(
+                r#"// Generated by sw_cli::define_build_info!()
+// Do not edit manually
+
+pub const VERSION: &str = "{}";
+pub const COPYRIGHT: &str = "{}";
+pub const LICENSE_NAME: &str = "{}";
+pub const LICENSE_URL: &str = "{}";
+pub const BUILD_HOST: &str = "{}";
+pub const GIT_COMMIT_SHA: &str = "{}";
+pub const BUILD_TIMESTAMP: i64 = {};
+"#,
+                version, copyright, license_name, license_url, hostname, commit_sha, timestamp
+            );
+
+            fs::write(&dest_path, generated_code)
+                .expect("Failed to write version_info.rs");
+
+            // Always rerun (no rerun-if-changed) - each build gets unique timestamp
         }
     };
 
