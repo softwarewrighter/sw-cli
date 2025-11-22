@@ -164,6 +164,7 @@ fn create_version_info() -> Version {
 When a user runs your CLI with `-V` or `--version`, they will see:
 
 ```
+Version: 0.1.0
 Copyright (c) 2025 Your Name or Organization
 MIT License: https://github.com/yourusername/yourrepo/blob/main/LICENSE
 Build: abc123d @ builder.local (2024-11-22T15:33:54+00:00)
@@ -222,6 +223,7 @@ fn create_version_string() -> String {
     );
 
     let version = Version::new(
+        env!("CARGO_PKG_VERSION").to_string(),
         "Copyright (c) 2025 Your Name".to_string(),
         "MIT".to_string(),
         "https://github.com/yourusername/yourrepo/blob/main/LICENSE".to_string(),

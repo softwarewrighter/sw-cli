@@ -45,6 +45,8 @@ impl fmt::Display for BuildInfo {
 /// Version information for the CLI application
 #[derive(Debug, Clone)]
 pub struct Version {
+    /// Semantic version number (e.g., "0.1.0")
+    pub version: String,
     /// Copyright notice
     pub copyright: String,
     /// License name (e.g., "MIT", "Apache-2.0")
@@ -58,12 +60,14 @@ pub struct Version {
 impl Version {
     /// Create a new Version instance
     pub fn new(
+        version: String,
         copyright: String,
         license_name: String,
         license_url: String,
         build_info: BuildInfo,
     ) -> Self {
         Self {
+            version,
             copyright,
             license_name,
             license_url,
@@ -74,6 +78,7 @@ impl Version {
 
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Version: {}", self.version)?;
         writeln!(f, "{}", self.copyright)?;
         writeln!(f, "{} License: {}", self.license_name, self.license_url)?;
         write!(f, "{}", self.build_info)
@@ -109,6 +114,7 @@ mod tests {
         );
 
         let version = Version::new(
+            "0.1.0".to_string(),
             "Copyright (c) 2025 Example Corp".to_string(),
             "MIT".to_string(),
             "https://github.com/example/repo/blob/main/LICENSE".to_string(),
@@ -116,6 +122,7 @@ mod tests {
         );
 
         let output = format!("{}", version);
+        assert!(output.contains("Version: 0.1.0"));
         assert!(output.contains("Copyright (c) 2025 Example Corp"));
         assert!(output.contains("MIT License: https://github.com/example/repo"));
         assert!(output.contains("Build: abc123d @ builder.local"));

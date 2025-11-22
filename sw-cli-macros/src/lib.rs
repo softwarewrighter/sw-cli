@@ -27,7 +27,7 @@ use quote::quote;
 pub fn create_version(input: TokenStream) -> TokenStream {
     let input_str = input.to_string();
 
-    // Parse the input to extract copyright, license_name, and license_url
+    // Parse the input to extract copyright, license_name and license_url
     let mut copyright = None;
     let mut license_name = None;
     let mut license_url = None;
@@ -56,6 +56,7 @@ pub fn create_version(input: TokenStream) -> TokenStream {
             );
 
             ::sw_cli::version::Version::new(
+                ::std::env!("CARGO_PKG_VERSION").to_string(),
                 #copyright.to_string(),
                 #license_name.to_string(),
                 #license_url.to_string(),
