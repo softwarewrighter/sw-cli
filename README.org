@@ -1,0 +1,281 @@
+#+TITLE: sw-cli: Modular CLI Utilities for Rust
+#+AUTHOR: Software Wrighter
+#+DATE: 2025
+
+* Overview
+
+=sw-cli= is a modular Rust library providing standardized utilities for building command-line applications. It offers reusable components for version management, argument parsing, configuration handling, and command dispatch.
+
+** Current Status
+
+- *Version*: 0.1.0
+- *Status*: Initial implementation with version/build modules
+- *Roadmap*: See [[file:docs/plan.md][docs/plan.md]] for planned modular refactoring
+
+** Key Features
+
+*** Version Information (Available Now)
+- Automatic build metadata collection (git SHA, hostname, timestamp)
+- Standardized 4-line version output format
+- Zero-configuration integration via macros
+- Build-time code generation
+
+*** Planned Features (v0.3.0+)
+- Configuration management with standard CLI flags
+- Trait-based CLI builder with clap integration
+- Command dispatcher with priority routing
+- I/O handling (stdin/stdout, files, append mode)
+- Dry-run mode support
+- Verbosity level management
+
+* Quick Start
+
+** Installation
+
+Add to your =Cargo.toml=:
+
+#+BEGIN_SRC toml
+[dependencies]
+sw-cli = { git = "https://github.com/softwarewrighter/sw-cli" }
+
+[build-dependencies]
+sw-cli = { git = "https://github.com/softwarewrighter/sw-cli" }
+#+END_SRC
+
+** Basic Usage (Version Information)
+
+*** 1. Create =COPYRIGHT= file in project root
+
+#+BEGIN_SRC text
+Copyright (c) 2025 Your Name
+#+END_SRC
+
+*** 2. Create =build.rs=
+
+#+BEGIN_SRC rust
+fn main() {
+    sw_cli::define_build_info!();
+}
+#+END_SRC
+
+*** 3. Use in your CLI application
+
+#+BEGIN_SRC rust
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() > 1 && (args[1] == "-V" || args[1] == "--version") {
+        println!("{}", sw_cli::version!());
+        return;
+    }
+
+    // Your CLI logic here
+}
+#+END_SRC
+
+*** 4. Output
+
+#+BEGIN_EXAMPLE
+Version: 0.1.0
+Copyright (c) 2025 Your Name
+MIT License: https://github.com/youruser/repo/blob/main/LICENSE
+Build: abc123d @ hostname (2025-11-22T22:43:30+00:00)
+#+END_EXAMPLE
+
+* Project Structure
+
+#+BEGIN_EXAMPLE
+sw-cli/
+├── src/
+│   ├── lib.rs              # Re-exports macros and version module
+│   └── version.rs          # BuildInfo and Version structs
+├── sw-cli-macros/          # Procedural macro crate
+│   └── src/lib.rs          # version!(), define_build_info!()
+├── examples/
+│   ├── demo-cli/           # Basic version demo
+│   └── build-config-dispatch-demo/  # Future framework demo (v0.3.0)
+├── docs/
+│   ├── version-usage.md    # Version module documentation
+│   └── plan.md             # Refactoring plan and roadmap
+├── scripts/
+│   ├── build.sh            # Build all crates
+│   ├── test.sh             # Run tests and checks
+│   └── demo.sh             # Run demo application
+└── CLAUDE.md               # AI assistant context
+#+END_EXAMPLE
+
+* Architecture
+
+** Current Architecture (v0.1.0)
+
+The library currently provides version and build information management:
+
+- *sw-cli* (main crate): Re-exports macros and provides =Version= and =BuildInfo= structs
+- *sw-cli-macros* (proc-macro crate): Provides =version!()= and =define_build_info!()= macros
+
+** Future Architecture (v0.3.0+)
+
+Planned modular structure with separated concerns:
+
+#+BEGIN_EXAMPLE
+crates/
+├── cli-utilities/          # Core utilities
+│   ├── build/              # Build metadata
+│   ├── version/            # Version management
+│   ├── config/             # Configuration state (PLANNED)
+│   ├── builder/            # CLI construction (PLANNED)
+│   └── dispatcher/         # Command routing (PLANNED)
+└── cli-macros/             # Procedural macros
+#+END_EXAMPLE
+
+See [[file:docs/plan.md][docs/plan.md]] for detailed refactoring plan.
+
+* Examples
+
+** Version Demo (Available)
+
+#+BEGIN_SRC bash
+cargo run -p demo-cli -- --version
+#+END_SRC
+
+** Build-Config-Dispatch Demo (v0.3.0 Design)
+
+The =build-config-dispatch-demo= example showcases the planned CLI framework:
+
+#+BEGIN_SRC bash
+# Show version
+build-config-dispatch-demo --version
+
+# Count lines
+build-config-dispatch-demo --count -i README.md
+
+# Dry-run mode
+build-config-dispatch-demo -n -i input.txt -o output.txt
+
+# Verbose processing
+build-config-dispatch-demo -v --reverse -i input.txt
+#+END_SRC
+
+*Note*: This example currently serves as a design specification. The Config, Builder, and Dispatcher modules will be implemented in v0.3.0.
+
+* Development
+
+** Building
+
+#+BEGIN_SRC bash
+# Build all crates
+./scripts/build.sh
+
+# Or use cargo directly
+cargo build --all
+#+END_SRC
+
+** Testing
+
+#+BEGIN_SRC bash
+# Run all tests and checks (fmt, clippy)
+./scripts/test.sh
+
+# Run specific tests
+cargo test -p sw-cli
+cargo test -p sw-cli-macros
+#+END_SRC
+
+** Code Quality
+
+#+BEGIN_SRC bash
+# Format code
+cargo fmt --all
+
+# Check formatting
+cargo fmt --all -- --check
+
+# Run clippy
+cargo clippy --all -- -D warnings
+#+END_SRC
+
+* Roadmap
+
+** v0.2.0 - Modular Refactoring
+- Reorganize into =crates/cli-utilities= and =crates/cli-macros=
+- Separate build and version into distinct modules
+- Rename =demo-cli= to =cli-version-demo=
+- Establish consistent =cli-*= naming pattern
+
+** v0.3.0 - CLI Framework Core
+- *Config Module*: Standard flag state management
+  - CommonFlags (dry-run, verbose, help, version, quiet, force)
+  - IoConfig (input/output files, stdin/stdout)
+  - Custom configuration extension
+- *Builder Module*: Trait-based CLI construction with clap
+  - CliBuilder trait
+  - Standard flag templates
+  - I/O argument templates
+- *Dispatcher Module*: Command routing
+  - Command trait
+  - Priority-based dispatch
+  - Built-in Version and Help commands
+- Implement =build-config-dispatch-demo= example
+
+** v0.4.0 - Advanced Features
+- Logging utilities (structured output, verbosity integration)
+- Terminal UI helpers (progress bars, colors, prompts)
+- Enhanced I/O (streaming, compression, format detection)
+
+** v0.5.0 - Polish
+- Testing utilities (fixtures, mocks, assertions)
+- Comprehensive documentation
+- Best practices guide
+- Performance optimizations
+
+* Documentation
+
+- [[file:docs/version-usage.md][Version Usage Guide]] - How to use version information features
+- [[file:docs/plan.md][Refactoring Plan]] - Complete modular architecture design
+- [[file:CLAUDE.md][AI Assistant Context]] - Project structure for Claude Code
+
+* Requirements
+
+** Rust Edition
+- Edition 2024 (experimental, may need adjustment for stable Rust)
+
+** Dependencies
+- =chrono = "0.4"= - Timestamp handling
+- =clap = "4.5"= (planned for v0.3.0) - Argument parsing
+
+** User Project Requirements
+- =COPYRIGHT= file in project root
+- =Cargo.toml= fields: =version=, =license=, =repository=
+- Git repository (optional, falls back to "unknown")
+
+* Use as Git Submodule
+
+=sw-cli= is designed to be used as a git submodule in CLI projects:
+
+#+BEGIN_SRC bash
+# Add as submodule
+git submodule add https://github.com/softwarewrighter/sw-cli libs/sw-cli
+
+# Update Cargo.toml
+[dependencies]
+sw-cli = { path = "libs/sw-cli" }
+#+END_SRC
+
+* Contributing
+
+Currently in active development. See [[file:docs/plan.md][docs/plan.md]] for implementation roadmap.
+
+* License
+
+MIT License - See LICENSE file for details
+
+* Author
+
+Software Wrighter
+- GitHub: [[https://github.com/softwarewrighter]]
+
+* See Also
+
+- [[file:docs/plan.md][Modular Refactoring Plan]] - Complete architecture and roadmap
+- [[file:examples/demo-cli/][demo-cli]] - Basic version information example
+- [[file:examples/build-config-dispatch-demo/][build-config-dispatch-demo]] - Future framework design
