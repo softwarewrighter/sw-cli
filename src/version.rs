@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use std::fmt;
 
 /// Build information captured at compile time
@@ -24,10 +25,14 @@ impl BuildInfo {
 
 impl fmt::Display for BuildInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let datetime = DateTime::<Utc>::from_timestamp_millis(self.build_timestamp_ms)
+            .unwrap_or(DateTime::<Utc>::UNIX_EPOCH);
         write!(
             f,
-            "Build: {} @ {} ({}ms)",
-            self.commit_sha, self.build_host, self.build_timestamp_ms
+            "Build: {} @ {} ({})",
+            self.commit_sha,
+            self.build_host,
+            datetime.to_rfc3339()
         )
     }
 }
@@ -75,9 +80,10 @@ mod tests {
         );
 
         let output = format!("{}", build_info);
+        // 1700000000000ms = 2023-11-14T22:13:20Z
         assert_eq!(
             output,
-            "Build: abc123def456 @ builder.local (1700000000000ms)"
+            "Build: abc123def456 @ builder.local (2023-11-14T22:13:20+00:00)"
         );
     }
 

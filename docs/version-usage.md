@@ -164,7 +164,7 @@ When a user runs your CLI with `-V` or `--version`, they will see:
 ```
 Copyright (c) 2025 Your Name or Organization
 License: https://github.com/yourusername/yourrepo/blob/main/LICENSE
-Build: abc123def456789... @ builder.local (1732291234567ms)
+Build: abc123def456789... @ builder.local (2024-11-22T15:33:54+00:00)
 ```
 
 ## Integration with CLI Argument Parsers
