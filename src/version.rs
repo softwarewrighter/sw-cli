@@ -24,10 +24,11 @@ impl BuildInfo {
 
 impl fmt::Display for BuildInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Build Information:")?;
-        writeln!(f, "  Host: {}", self.build_host)?;
-        writeln!(f, "  Commit: {}", self.commit_sha)?;
-        writeln!(f, "  Timestamp: {} ms", self.build_timestamp_ms)
+        write!(
+            f,
+            "Build: {} @ {} ({}ms)",
+            self.commit_sha, self.build_host, self.build_timestamp_ms
+        )
     }
 }
 
@@ -57,7 +58,6 @@ impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{}", self.copyright)?;
         writeln!(f, "License: {}", self.license_url)?;
-        writeln!(f)?;
         write!(f, "{}", self.build_info)
     }
 }
@@ -75,10 +75,10 @@ mod tests {
         );
 
         let output = format!("{}", build_info);
-        assert!(output.contains("Build Information:"));
-        assert!(output.contains("Host: builder.local"));
-        assert!(output.contains("Commit: abc123def456"));
-        assert!(output.contains("Timestamp: 1700000000000 ms"));
+        assert_eq!(
+            output,
+            "Build: abc123def456 @ builder.local (1700000000000ms)"
+        );
     }
 
     #[test]
@@ -90,14 +90,14 @@ mod tests {
         );
 
         let version = Version::new(
-            "Copyright (c) 2024 Example Corp".to_string(),
+            "Copyright (c) 2025 Example Corp".to_string(),
             "https://github.com/example/repo/blob/main/LICENSE".to_string(),
             build_info,
         );
 
         let output = format!("{}", version);
-        assert!(output.contains("Copyright (c) 2024 Example Corp"));
+        assert!(output.contains("Copyright (c) 2025 Example Corp"));
         assert!(output.contains("License: https://github.com/example/repo"));
-        assert!(output.contains("Build Information:"));
+        assert!(output.contains("Build: abc123def456 @ builder.local"));
     }
 }
