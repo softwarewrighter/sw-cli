@@ -27,10 +27,15 @@ impl fmt::Display for BuildInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let datetime = DateTime::<Utc>::from_timestamp_millis(self.build_timestamp_ms)
             .unwrap_or(DateTime::<Utc>::UNIX_EPOCH);
+        let short_sha = if self.commit_sha.len() > 7 {
+            &self.commit_sha[..7]
+        } else {
+            &self.commit_sha
+        };
         write!(
             f,
             "Build: {} @ {} ({})",
-            self.commit_sha,
+            short_sha,
             self.build_host,
             datetime.to_rfc3339()
         )
@@ -42,6 +47,8 @@ impl fmt::Display for BuildInfo {
 pub struct Version {
     /// Copyright notice
     pub copyright: String,
+    /// License name (e.g., "MIT", "Apache-2.0")
+    pub license_name: String,
     /// URL to the LICENSE file on GitHub
     pub license_url: String,
     /// Build information
@@ -50,9 +57,15 @@ pub struct Version {
 
 impl Version {
     /// Create a new Version instance
-    pub fn new(copyright: String, license_url: String, build_info: BuildInfo) -> Self {
+    pub fn new(
+        copyright: String,
+        license_name: String,
+        license_url: String,
+        build_info: BuildInfo,
+    ) -> Self {
         Self {
             copyright,
+            license_name,
             license_url,
             build_info,
         }
@@ -62,7 +75,7 @@ impl Version {
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{}", self.copyright)?;
-        writeln!(f, "License: {}", self.license_url)?;
+        writeln!(f, "{} License: {}", self.license_name, self.license_url)?;
         write!(f, "{}", self.build_info)
     }
 }
@@ -80,10 +93,10 @@ mod tests {
         );
 
         let output = format!("{}", build_info);
-        // 1700000000000ms = 2023-11-14T22:13:20Z
+        // 1700000000000ms = 2023-11-14T22:13:20Z, SHA shortened to 7 chars
         assert_eq!(
             output,
-            "Build: abc123def456 @ builder.local (2023-11-14T22:13:20+00:00)"
+            "Build: abc123d @ builder.local (2023-11-14T22:13:20+00:00)"
         );
     }
 
@@ -97,13 +110,14 @@ mod tests {
 
         let version = Version::new(
             "Copyright (c) 2025 Example Corp".to_string(),
+            "MIT".to_string(),
             "https://github.com/example/repo/blob/main/LICENSE".to_string(),
             build_info,
         );
 
         let output = format!("{}", version);
         assert!(output.contains("Copyright (c) 2025 Example Corp"));
-        assert!(output.contains("License: https://github.com/example/repo"));
-        assert!(output.contains("Build: abc123def456 @ builder.local"));
+        assert!(output.contains("MIT License: https://github.com/example/repo"));
+        assert!(output.contains("Build: abc123d @ builder.local"));
     }
 }

@@ -8,6 +8,7 @@ fn main() {
     if args.len() > 1 && (args[1] == "-V" || args[1] == "--version") {
         let version = create_version!(
             copyright: "Copyright (c) 2025 Software Wrighter",
+            license_name: "MIT",
             license_url: "https://github.com/softwarewrighter/sw-cli/blob/main/LICENSE"
         );
 

@@ -68,6 +68,7 @@ fn main() {
     if args.len() > 1 && (args[1] == "-V" || args[1] == "--version") {
         let version = create_version!(
             copyright: "Copyright (c) 2025 Your Name or Organization",
+            license_name: "MIT",
             license_url: "https://github.com/yourusername/yourrepo/blob/main/LICENSE"
         );
         println!("{}", version);
@@ -151,6 +152,7 @@ fn create_version_info() -> Version {
 
     Version::new(
         "Copyright (c) 2025 Your Name or Organization".to_string(),
+        "MIT".to_string(),
         "https://github.com/yourusername/yourrepo/blob/main/LICENSE".to_string(),
         build_info,
     )
@@ -163,8 +165,8 @@ When a user runs your CLI with `-V` or `--version`, they will see:
 
 ```
 Copyright (c) 2025 Your Name or Organization
-License: https://github.com/yourusername/yourrepo/blob/main/LICENSE
-Build: abc123def456789... @ builder.local (2024-11-22T15:33:54+00:00)
+MIT License: https://github.com/yourusername/yourrepo/blob/main/LICENSE
+Build: abc123d @ builder.local (2024-11-22T15:33:54+00:00)
 ```
 
 ## Integration with CLI Argument Parsers
@@ -187,6 +189,7 @@ struct Cli {
 fn create_version_string() -> String {
     let version = create_version!(
         copyright: "Copyright (c) 2025 Your Name",
+        license_name: "MIT",
         license_url: "https://github.com/yourusername/yourrepo/blob/main/LICENSE"
     );
     format!("{}", version)
@@ -220,6 +223,7 @@ fn create_version_string() -> String {
 
     let version = Version::new(
         "Copyright (c) 2025 Your Name".to_string(),
+        "MIT".to_string(),
         "https://github.com/yourusername/yourrepo/blob/main/LICENSE".to_string(),
         build_info,
     );

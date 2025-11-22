@@ -10,6 +10,7 @@ use quote::quote;
 ///
 /// let version = create_version!(
 ///     copyright: "Copyright (c) 2025 Your Name",
+///     license_name: "MIT",
 ///     license_url: "https://github.com/yourusername/repo/blob/main/LICENSE"
 /// );
 ///
@@ -26,20 +27,24 @@ use quote::quote;
 pub fn create_version(input: TokenStream) -> TokenStream {
     let input_str = input.to_string();
 
-    // Parse the input to extract copyright and license_url
+    // Parse the input to extract copyright, license_name, and license_url
     let mut copyright = None;
+    let mut license_name = None;
     let mut license_url = None;
 
     for pair in input_str.split(',') {
         let pair = pair.trim();
         if let Some(value) = pair.strip_prefix("copyright:") {
             copyright = Some(value.trim().trim_matches('"'));
+        } else if let Some(value) = pair.strip_prefix("license_name:") {
+            license_name = Some(value.trim().trim_matches('"'));
         } else if let Some(value) = pair.strip_prefix("license_url:") {
             license_url = Some(value.trim().trim_matches('"'));
         }
     }
 
     let copyright = copyright.expect("copyright field is required");
+    let license_name = license_name.expect("license_name field is required");
     let license_url = license_url.expect("license_url field is required");
 
     let expanded = quote! {
@@ -52,6 +57,7 @@ pub fn create_version(input: TokenStream) -> TokenStream {
 
             ::sw_cli::version::Version::new(
                 #copyright.to_string(),
+                #license_name.to_string(),
                 #license_url.to_string(),
                 build_info,
             )
