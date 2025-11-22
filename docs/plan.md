@@ -843,13 +843,43 @@ clap = { version = "4.5", features = ["derive"] }
 
 ### Example Crate
 
-Create `examples/cli-complete-demo/` demonstrating full integration:
-- Custom command implementation
-- Standard flag usage
-- I/O file handling
-- Dispatcher configuration
-- Dry-run mode
-- Verbose/quiet modes
+The `examples/build-config-dispatch-demo/` example demonstrates the complete integration pattern:
+
+#### Features Demonstrated
+- **Custom CliBuilder**: Extends `StandardCliBuilder` with custom arguments (`--count`, `--reverse`)
+- **Command Implementation**: Three distinct commands (Version, Help, Process)
+- **Standard Flag Usage**: All common flags (-n, -v, -h, -V, -q, -f)
+- **I/O Handling**: Multi-file input (-i), single output (-o), stdin/stdout, append mode (-a)
+- **Dispatcher Routing**: Priority-based command selection
+- **Dry-Run Mode**: Shows what would be done without executing
+- **Verbosity Levels**: Adapts output based on -v (verbose) or -q (quiet)
+- **Custom Commands**: Line counting and reversing functionality
+
+#### Example Commands
+```bash
+# Show version information
+build-config-dispatch-demo --version
+
+# Count lines in files
+build-config-dispatch-demo --count -i README.md
+
+# Process with dry-run
+build-config-dispatch-demo -n -i input.txt -o output.txt
+
+# Reverse file contents with verbose output
+build-config-dispatch-demo -v --reverse -i input.txt -o reversed.txt
+
+# Process multiple inputs
+build-config-dispatch-demo -i file1.txt -i file2.txt -o combined.txt
+```
+
+#### Implementation Status
+**NOTE**: This example represents the FUTURE state after v0.3.0 refactoring.
+Currently, the Config, Builder, and Dispatcher modules don't exist yet.
+The example serves as a specification and design document for the final implementation.
+
+See `examples/build-config-dispatch-demo/src/main.rs` for the complete code
+and detailed inline documentation.
 
 ## Future Roadmap
 
@@ -876,7 +906,7 @@ Create `examples/cli-complete-demo/` demonstrating full integration:
   - Built-in `VersionCommand` and `HelpCommand`
   - Default command support
 
-- Add `examples/cli-complete-demo`
+- Implement `examples/build-config-dispatch-demo` (specification already exists)
 - Add clap dependency to cli-utilities
 - Remove deprecated `create_version!()` macro
 

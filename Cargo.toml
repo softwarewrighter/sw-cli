@@ -1,5 +1,5 @@
 [workspace]
-members = ["sw-cli-macros", "examples/demo-cli"]
+members = ["sw-cli-macros", "examples/demo-cli", "examples/build-config-dispatch-demo"]
 resolver = "2"
 
 [package]
