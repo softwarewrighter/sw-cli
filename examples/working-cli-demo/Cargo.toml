@@ -5,6 +5,14 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/softwarewrighter/sw-cli"
 
+[lib]
+name = "working_cli_demo"
+path = "src/lib.rs"
+
+[[bin]]
+name = "working-cli-demo"
+path = "src/main.rs"
+
 [dependencies]
 sw-cli = { path = "../.." }
 clap = { version = "4.0", features = ["derive"] }

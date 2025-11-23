@@ -1,141 +1,215 @@
-# Working CLI Demo - Builder-Config-Dispatcher Pattern
+# Working CLI Demo
 
-This is a **WORKING** example that demonstrates the Builder-Config-Dispatcher pattern using current sw-cli capabilities.
+A modular, production-ready CLI demonstrating the Builder-Config-Dispatcher pattern.
 
-## What This Demonstrates
+## Quick Start
 
-This example shows the architecture that the future `cli_app!` macro will generate automatically. It implements:
+```bash
+# Build and test
+cargo build -p working-cli-demo
+cargo test -p working-cli-demo
 
-1. **BaseConfig**: Standard flags common to all CLIs
-   - `-v, --verbose` - Verbose output
-   - `-n, --dry-run` - Show what would be done
-   - `-q, --quiet` - Minimal output
-   - `-h, --help` - Show help
-   - `-V, --version` - Show version (uses `sw_cli::version!()`)
-   - `-i, --input` - Input files (repeatable)
-   - `-o, --output` - Output file
+# Run examples
+echo -e "line1\nline2\nline3" > /tmp/test.txt
+cargo run -p working-cli-demo -- --version
+cargo run -p working-cli-demo -- --count -i /tmp/test.txt
+cargo run -p working-cli-demo -- -p "line2" -i /tmp/test.txt
+cargo run -p working-cli-demo -- --reverse -i /tmp/test.txt
+cargo run -p working-cli-demo -- -v --count -i /tmp/test.txt
+cargo run -p working-cli-demo -- -n --count -i /tmp/test.txt
+```
 
-2. **Custom Config**: CLI-specific fields
-   - `--count` - Count lines
-   - `-p, --pattern` - Search pattern
-   - `--reverse` - Reverse lines
+## Project Structure
 
-3. **Builder Pattern**: Constructing clap Command
-   - Standard flags added manually (will be macro-generated)
-   - Custom flags defined per-CLI
+```
+working-cli-demo/
+├── src/
+│   ├── lib.rs              # Public API exports (8 lines)
+│   ├── main.rs             # Application entry point (22 lines)
+│   ├── config.rs           # Configuration types (29 lines)
+│   ├── builder.rs          # Clap CLI builder (59 lines)
+│   ├── dispatcher.rs       # Command dispatcher (30 lines)
+│   └── actions/
+│       ├── mod.rs          # Action module exports (9 lines)
+│       ├── version.rs      # Version command (18 lines)
+│       ├── help.rs         # Help command (24 lines)
+│       ├── count.rs        # Count lines command (53 lines)
+│       ├── grep.rs         # Grep command (55 lines)
+│       ├── reverse.rs      # Reverse command (36 lines)
+│       └── copy.rs         # Copy command (28 lines)
+├── tests/
+│   ├── config_test.rs      # Config tests (60 lines)
+│   └── dispatcher_test.rs  # Dispatcher tests (55 lines)
+├── build.rs                # Build script (3 lines)
+├── COPYRIGHT               # Copyright notice
+├── Cargo.toml              # Package manifest
+└── README.md               # This file
+```
 
-4. **Dispatcher**: Chain of responsibility
-   - Commands checked in priority order
-   - First matching command executes
+**Total**: ~400 lines across 15 files (~27 lines/file average)
 
-5. **Commands**: Modular command handlers
-   - `VersionCommand` (priority 0) - Uses `sw_cli::version!()`
-   - `HelpCommand` (priority 1) - Shows clap-generated help
-   - `CountCommand` - Counts lines in files
-   - `GrepCommand` - Searches for pattern
-   - `ReverseCommand` - Reverses line order
-   - `CopyCommand` - Default, copies input to output
+## Architecture
+
+### 1. Config Layer (`config.rs`)
+- `BaseConfig`: Standard flags (-v, -n, -q, -h, -V, -i, -o)
+- `CliConfig`: Extends BaseConfig with custom fields (pattern, count, reverse)
+- Helper methods: `verbosity()`, `is_dry_run()`
+
+### 2. Builder Layer (`builder.rs`)
+- `build_cli()`: Constructs clap Command
+- `parse_config()`: Converts ArgMatches → CliConfig
+- Helper functions: `standard_args()`, `custom_args()`, `arg()`
+
+### 3. Dispatcher Layer (`dispatcher.rs`)
+- `Command` trait: `can_handle()`, `execute()`, `priority()`
+- `Dispatcher`: Chain of responsibility pattern
+- Commands sorted by priority, first match executes
+
+### 4. Actions Layer (`actions/`)
+Each action is a separate module with a single Command implementation:
+- **version**: Shows version info (priority 0, uses sw_cli::version!())
+- **help**: Shows help text (priority 1)
+- **count**: Counts lines in files
+- **grep**: Searches for patterns
+- **reverse**: Reverses line order
+- **copy**: Default action, copies input to output
+
+### 5. Main (`main.rs`)
+Minimal orchestration: build CLI → parse config → create dispatcher → dispatch
+
+## Standard Flags (BaseConfig)
+
+All CLIs get these flags automatically:
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--verbose` | `-v` | Increase output verbosity |
+| `--dry-run` | `-n` | Show what would be done |
+| `--quiet` | `-q` | Suppress non-essential output |
+| `--help` | `-h` | Show help information |
+| `--version` | `-V` | Show version (from sw-cli) |
+| `--input FILE` | `-i` | Input file(s), repeatable |
+| `--output FILE` | `-o` | Output file |
+
+## Custom Flags (CliConfig)
+
+This demo adds:
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--pattern PATTERN` | `-p` | Pattern to search for |
+| `--count` | | Count lines in input |
+| `--reverse` | | Reverse line order |
 
 ## Usage Examples
 
+### Version Information
 ```bash
-# Show version (uses sw-cli version! macro)
-cargo run -p working-cli-demo -- --version
+$ cargo run -p working-cli-demo -- --version
+Version: 0.1.0
+Copyright (c) 2025 Software Wrighter
+MIT License: https://github.com/softwarewrighter/sw-cli/blob/main/LICENSE
+Build: 1549013 @ manager (2025-11-23T00:12:45.123+00:00)
+```
 
-# Show help
-cargo run -p working-cli-demo -- --help
+### Help Text
+```bash
+$ cargo run -p working-cli-demo -- --help
+Builder-Config-Dispatcher pattern demo
 
-# Count lines in file
-echo -e "line1\nline2\nline3" > /tmp/test.txt
-cargo run -p working-cli-demo -- --count -i /tmp/test.txt
-# Output: 3
+Usage: working-cli-demo [OPTIONS]
+
+Options:
+  -V, --version            Show version information
+  -h, --help               Show help information
+  -v, --verbose            Increase output verbosity
+  -n, --dry-run            Show what would be done
+  -q, --quiet              Suppress non-essential output
+  -i, --input <FILE>       Input file(s)
+  -o, --output <FILE>      Output file
+  -p, --pattern <PATTERN>  Pattern to search for
+      --count              Count lines in input
+      --reverse            Reverse line order
+```
+
+### Count Lines
+```bash
+# Basic count
+$ cargo run -p working-cli-demo -- --count -i /tmp/test.txt
+3
 
 # Count with verbose output
-cargo run -p working-cli-demo -- -v --count -i /tmp/test.txt
-# Output:
-# Processing: /tmp/test.txt
-# /tmp/test.txt: 3 lines
+$ cargo run -p working-cli-demo -- -v --count -i /tmp/test.txt
+Processing: /tmp/test.txt
+/tmp/test.txt: 3 lines
 
-# Search for pattern
-cargo run -p working-cli-demo -- -p "line2" -i /tmp/test.txt
-# Output: line2
-
-# Search with verbose (shows filename)
-cargo run -p working-cli-demo -- -v -p "line2" -i /tmp/test.txt
-# Output: /tmp/test.txt: line2
-
-# Reverse lines
-cargo run -p working-cli-demo -- --reverse -i /tmp/test.txt
-# Output:
-# line3
-# line2
-# line1
-
-# Dry-run mode (shows what would be done)
-cargo run -p working-cli-demo -- -n --count -i /tmp/test.txt
-# Output: Would count lines in: /tmp/test.txt
-
-# Read from stdin
-echo -e "hello\nworld" | cargo run -p working-cli-demo
-# Output:
-# hello
-# world
-
-# Read from stdin and count
-echo -e "hello\nworld" | cargo run -p working-cli-demo -- --count
-# Output: 2
+# Dry-run mode
+$ cargo run -p working-cli-demo -- -n --count -i /tmp/test.txt
+Would count lines in: /tmp/test.txt
 ```
 
-## Architecture Pattern
+### Search Pattern
+```bash
+# Basic grep
+$ cargo run -p working-cli-demo -- -p "line2" -i /tmp/test.txt
+line2
 
-This example shows the manual implementation. Compare this with what the future macro will generate:
-
-### Manual (Current - ~450 lines)
-
-```rust
-// Define BaseConfig struct
-pub struct BaseConfig { ... }
-
-// Define CLI-specific config
-pub struct CliConfig {
-    pub base: BaseConfig,
-    pub pattern: Option<String>,
-    pub count: bool,
-    pub reverse: bool,
-}
-
-// Build clap Command manually
-fn build_cli() -> Command {
-    Command::new("working-cli-demo")
-        .arg(Arg::new("verbose").short('v')...)
-        .arg(Arg::new("dry-run").short('n')...)
-        // ... 50+ lines of arg definitions
-}
-
-// Parse config manually
-fn parse_config(matches: ArgMatches) -> CliConfig { ... }
-
-// Define each command struct and trait impl
-struct CountCommand;
-impl CliCommand for CountCommand { ... }
-
-struct GrepCommand;
-impl CliCommand for GrepCommand { ... }
-
-// ... more commands
-
-// Build dispatcher and wire everything together
-fn main() {
-    let matches = build_cli().get_matches();
-    let config = parse_config(matches);
-    let dispatcher = Dispatcher::new()
-        .register(VersionCommand)
-        // ... register all commands
-    dispatcher.dispatch(&config);
-}
+# Grep with filename (verbose)
+$ cargo run -p working-cli-demo -- -v -p "line2" -i /tmp/test.txt
+/tmp/test.txt: line2
 ```
 
-### With Macro (Future - ~50 lines)
+### Reverse Lines
+```bash
+$ cargo run -p working-cli-demo -- --reverse -i /tmp/test.txt
+line3
+line2
+line1
+```
+
+### Stdin/Stdout
+```bash
+# Read from stdin, write to stdout
+$ echo -e "hello\nworld" | cargo run -p working-cli-demo
+hello
+world
+
+# Count lines from stdin
+$ echo -e "hello\nworld" | cargo run -p working-cli-demo -- --count
+2
+
+# Pipe through grep
+$ cat /tmp/test.txt | cargo run -p working-cli-demo -- -p "line2"
+line2
+```
+
+## Testing
+
+```bash
+# Run all tests
+cargo test -p working-cli-demo
+
+# Run specific test file
+cargo test -p working-cli-demo --test config_test
+cargo test -p working-cli-demo --test dispatcher_test
+
+# Run with verbose output
+cargo test -p working-cli-demo -- --nocapture
+```
+
+## Design Goals Achieved
+
+✅ **Modularity**: 15 files, ~27 lines/file average
+✅ **Single Responsibility**: Each file has one clear purpose
+✅ **Testability**: Separate test files for each module
+✅ **Type Safety**: Strongly-typed config, no string lookups
+✅ **Extensibility**: Add commands by creating new files in actions/
+✅ **Readability**: No file exceeds 60 lines
+✅ **Maintainability**: Clear structure, minimal coupling
+
+## Future: Macro-Based Version
+
+This manual implementation (~400 lines) will be reduced to ~50 lines with macros:
 
 ```rust
 use sw_cli::prelude::*;
@@ -153,42 +227,10 @@ cli_app! {
 cli_command! {
     name: CountCommand,
     can_handle: |c| c.count,
-    execute: |c| { /* count logic */ }
+    execute: |c| { /* count logic from count.rs */ }
 }
 
 // ... other commands
 ```
 
-The macro generates all the boilerplate!
-
-## Code Organization
-
-```
-working-cli-demo/
-├── src/
-│   └── main.rs           # Complete implementation
-├── build.rs              # sw_cli::define_build_info!()
-├── COPYRIGHT             # Required by sw-cli
-├── Cargo.toml            # Dependencies: sw-cli, clap
-└── README.md             # This file
-```
-
-## Key Takeaways
-
-1. **Version Info is Easy**: Just call `sw_cli::version!()` in VersionCommand
-2. **Dispatcher Pattern Works**: Clean separation of concerns
-3. **Standard Flags are Repetitive**: Perfect candidate for macro generation
-4. **Chain of Responsibility is Powerful**: Priority-based command routing
-5. **Type-Safe Config**: No string-based lookups, all strongly typed
-
-## Next Steps
-
-This example demonstrates what needs to be implemented:
-
-1. **Phase 1**: Create `BaseConfig` in sw-cli library
-2. **Phase 2**: Create helper functions for standard flags
-3. **Phase 3**: Create `Dispatcher` and `Command` trait
-4. **Phase 4**: Create `cli_app!` macro to generate all this boilerplate
-5. **Phase 5**: Create `cli_command!` macro to simplify command definitions
-
-Once complete, users will write ~50 lines instead of ~450!
+The macro will generate: config.rs, builder.rs, dispatcher.rs, and command boilerplate.
