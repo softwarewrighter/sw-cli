@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use std::fmt;
+use std::env;
 
 /// Build information captured at compile time
 #[derive(Debug, Clone)]
@@ -85,6 +86,34 @@ impl fmt::Display for Version {
         writeln!(f, "{} License: {}", self.license_name, self.license_url)?;
         write!(f, "{}", self.build_info)
     }
+}
+
+/// Check command line arguments for version flags (-V or --version).
+/// Returns true if a version flag was found in any position.
+///
+/// This function checks all command line arguments (not just the first one)
+/// to handle cases where flags are combined in different orders, e.g.:
+/// - `mycli -V`
+/// - `mycli -V -v -n`
+/// - `mycli -v -V -n`
+/// - `mycli --version`
+///
+/// # Examples
+///
+/// ```no_run
+/// use sw_cli::version::check_version_flag;
+///
+/// fn main() {
+///     if check_version_flag() {
+///         println!("{}", sw_cli::version!());
+///         return;
+///     }
+///     // ... rest of CLI logic
+/// }
+/// ```
+pub fn check_version_flag() -> bool {
+    let args: Vec<String> = env::args().collect();
+    args.iter().skip(1).any(|arg| arg == "-V" || arg == "--version")
 }
 
 #[cfg(test)]

@@ -15,3 +15,4 @@ pub use command::Command;
 pub use commands::{HelpCommand, VersionCommand};
 pub use config::{BaseConfig, CliConfig, HelpType};
 pub use dispatcher::Dispatcher;
+pub use version::check_version_flag;
