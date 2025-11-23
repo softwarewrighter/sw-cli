@@ -1,8 +1,7 @@
-pub mod config;
-pub mod builder;
-pub mod dispatcher;
 pub mod actions;
+pub mod args;
+pub mod builder;
+pub mod config;
 
-pub use config::{BaseConfig, CliConfig};
-pub use builder::build_cli;
-pub use dispatcher::{Dispatcher, Command};
+pub use builder::{build_cli, parse_config};
+pub use config::DemoConfig;

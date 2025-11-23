@@ -1,22 +1,15 @@
-use working_cli_demo::*;
-use working_cli_demo::actions::*;
+use sw_cli::dispatch;
+use working_cli_demo::actions::{CopyCommand, CountCommand, GrepCommand, ReverseCommand};
+use working_cli_demo::{build_cli, parse_config};
 
 fn main() {
     let matches = build_cli().get_matches();
-    let config = builder::parse_config(matches);
+    let config = parse_config(&matches);
 
-    let help_text = build_cli().render_help().to_string();
-
-    let dispatcher = Dispatcher::new()
-        .register(VersionCommand)
-        .register(HelpCommand::new(help_text))
-        .register(CountCommand)
-        .register(GrepCommand)
-        .register(ReverseCommand)
-        .register(CopyCommand);
+    let dispatcher = dispatch!(CountCommand, GrepCommand, ReverseCommand, CopyCommand);
 
     if let Err(e) = dispatcher.dispatch(&config) {
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
         std::process::exit(1);
     }
 }

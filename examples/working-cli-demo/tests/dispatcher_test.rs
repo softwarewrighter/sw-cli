@@ -1,19 +1,18 @@
-use working_cli_demo::*;
-use working_cli_demo::config::BaseConfig;
+use sw_cli::{BaseConfig, Command, HelpType, VersionCommand};
+use working_cli_demo::DemoConfig;
 use working_cli_demo::actions::*;
 
 #[test]
 fn test_version_command_priority() {
-    let config = CliConfig {
+    let config = DemoConfig {
         base: BaseConfig {
             verbose: false,
             dry_run: false,
-            quiet: false,
-            help: false,
+            help: HelpType::None,
             version: true,
-            input: None,
-            output: None,
         },
+        input: None,
+        output: None,
         pattern: None,
         count: false,
         reverse: false,
@@ -26,16 +25,15 @@ fn test_version_command_priority() {
 
 #[test]
 fn test_count_command_handles_count_flag() {
-    let config = CliConfig {
+    let config = DemoConfig {
         base: BaseConfig {
             verbose: false,
             dry_run: false,
-            quiet: false,
-            help: false,
+            help: HelpType::None,
             version: false,
-            input: None,
-            output: None,
         },
+        input: None,
+        output: None,
         pattern: None,
         count: true,
         reverse: false,
@@ -47,16 +45,15 @@ fn test_count_command_handles_count_flag() {
 
 #[test]
 fn test_copy_command_is_default() {
-    let config = CliConfig {
+    let config = DemoConfig {
         base: BaseConfig {
             verbose: false,
             dry_run: false,
-            quiet: false,
-            help: false,
+            help: HelpType::None,
             version: false,
-            input: None,
-            output: None,
         },
+        input: None,
+        output: None,
         pattern: None,
         count: false,
         reverse: false,

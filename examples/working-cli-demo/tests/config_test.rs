@@ -1,18 +1,17 @@
-use working_cli_demo::CliConfig;
-use working_cli_demo::config::BaseConfig;
+use sw_cli::{BaseConfig, CliConfig, HelpType};
+use working_cli_demo::DemoConfig;
 
 #[test]
-fn test_verbosity_quiet() {
-    let config = CliConfig {
+fn test_verbosity_normal() {
+    let config = DemoConfig {
         base: BaseConfig {
             verbose: false,
             dry_run: false,
-            quiet: true,
-            help: false,
+            help: HelpType::None,
             version: false,
-            input: None,
-            output: None,
         },
+        input: None,
+        output: None,
         pattern: None,
         count: false,
         reverse: false,
@@ -23,16 +22,15 @@ fn test_verbosity_quiet() {
 
 #[test]
 fn test_verbosity_verbose() {
-    let config = CliConfig {
+    let config = DemoConfig {
         base: BaseConfig {
             verbose: true,
             dry_run: false,
-            quiet: false,
-            help: false,
+            help: HelpType::None,
             version: false,
-            input: None,
-            output: None,
         },
+        input: None,
+        output: None,
         pattern: None,
         count: false,
         reverse: false,
@@ -43,16 +41,15 @@ fn test_verbosity_verbose() {
 
 #[test]
 fn test_dry_run() {
-    let config = CliConfig {
+    let config = DemoConfig {
         base: BaseConfig {
             verbose: false,
             dry_run: true,
-            quiet: false,
-            help: false,
+            help: HelpType::None,
             version: false,
-            input: None,
-            output: None,
         },
+        input: None,
+        output: None,
         pattern: None,
         count: false,
         reverse: false,

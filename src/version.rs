@@ -13,7 +13,8 @@ pub struct BuildInfo {
 }
 
 impl BuildInfo {
-    /// Create a new BuildInfo instance
+    /// Create a new `BuildInfo` instance
+    #[must_use]
     pub fn new(build_host: String, commit_sha: String, build_timestamp_ms: i64) -> Self {
         Self {
             build_host,
@@ -59,6 +60,7 @@ pub struct Version {
 
 impl Version {
     /// Create a new Version instance
+    #[must_use]
     pub fn new(
         version: String,
         copyright: String,

@@ -1,0 +1,13 @@
+Usage: working-cli-demo [OPTIONS]
+
+Options:
+  -V, --version    Show version
+  -h               Short help (this message)
+  --help           Long help with examples
+  -v, --verbose    Verbose output
+  -n, --dry-run    Dry run mode
+  -i, --input      Input file(s)
+  -o, --output     Output file
+  -p, --pattern    Search pattern
+  --count          Count lines
+  --reverse        Reverse order

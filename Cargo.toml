@@ -1,12 +1,25 @@
 [workspace]
-members = ["sw-cli-macros", "examples/demo-cli", "examples/build-config-dispatch-demo", "examples/working-cli-demo"]
+members = ["sw-cli-macros", "examples/demo-cli", "examples/working-cli-demo"]
 resolver = "2"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
 
 [package]
 name = "sw-cli"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/softwarewrighter/sw-cli"
+
+[lints]
+workspace = true
 
 [dependencies]
 sw-cli-macros = { path = "sw-cli-macros" }
 chrono = "0.4"
+clap = "4.0"
+
+[build-dependencies]
+sw-cli-macros = { path = "sw-cli-macros" }
+

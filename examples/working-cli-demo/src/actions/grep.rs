@@ -1,62 +1,44 @@
-use crate::{CliConfig, Command};
+use crate::DemoConfig;
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
+use sw_cli::{CliConfig, Command};
 
 pub struct GrepCommand;
 
 impl Command for GrepCommand {
-    fn can_handle(&self, config: &CliConfig) -> bool {
-        config.pattern.is_some()
+    fn can_handle(&self, config: &dyn CliConfig) -> bool {
+        config
+            .as_any()
+            .downcast_ref::<DemoConfig>()
+            .is_some_and(|c| c.pattern.is_some())
     }
 
-    fn execute(&self, config: &CliConfig) -> Result<(), Box<dyn Error>> {
-        let pattern = config.pattern.as_ref().unwrap();
+    fn execute(&self, config: &dyn CliConfig) -> Result<(), Box<dyn Error>> {
+        let demo_config = config.as_any().downcast_ref::<DemoConfig>().unwrap();
+        let pattern = demo_config.pattern.as_ref().unwrap();
 
-        if let Some(inputs) = &config.base.input {
+        if let Some(inputs) = &demo_config.input {
             for path in inputs {
-                grep_file(path, pattern, config)?;
+                for line in BufReader::new(File::open(path)?).lines() {
+                    let line = line?;
+                    if line.contains(pattern) {
+                        if config.verbosity() > 0 {
+                            println!("{}: {}", path.display(), line);
+                        } else {
+                            println!("{line}");
+                        }
+                    }
+                }
             }
         } else {
-            grep_stdin(pattern, config)?;
+            for line in BufReader::new(io::stdin()).lines() {
+                let line = line?;
+                if line.contains(pattern) {
+                    println!("{line}");
+                }
+            }
         }
         Ok(())
-    }
-}
-
-fn grep_file(path: &std::path::Path, pattern: &str, config: &CliConfig) -> Result<(), Box<dyn Error>> {
-    if config.is_dry_run() {
-        println!("Would search for '{}' in: {}", pattern, path.display());
-        return Ok(());
-    }
-
-    for line in BufReader::new(File::open(path)?).lines() {
-        let line = line?;
-        if line.contains(pattern) {
-            print_match(&line, Some(path), config);
-        }
-    }
-    Ok(())
-}
-
-fn grep_stdin(pattern: &str, config: &CliConfig) -> Result<(), Box<dyn Error>> {
-    for line in BufReader::new(io::stdin()).lines() {
-        let line = line?;
-        if line.contains(pattern) {
-            print_match(&line, None, config);
-        }
-    }
-    Ok(())
-}
-
-fn print_match(line: &str, path: Option<&std::path::Path>, config: &CliConfig) {
-    if config.verbosity() > 0 {
-        if let Some(p) = path {
-            println!("{}: {}", p.display(), line);
-        } else {
-            println!("{}", line);
-        }
-    } else {
-        println!("{}", line);
     }
 }

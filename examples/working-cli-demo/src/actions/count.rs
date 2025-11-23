@@ -1,17 +1,23 @@
-use crate::{CliConfig, Command};
+use crate::DemoConfig;
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
+use sw_cli::{CliConfig, Command};
 
 pub struct CountCommand;
 
 impl Command for CountCommand {
-    fn can_handle(&self, config: &CliConfig) -> bool {
-        config.count
+    fn can_handle(&self, config: &dyn CliConfig) -> bool {
+        config
+            .as_any()
+            .downcast_ref::<DemoConfig>()
+            .is_some_and(|c| c.count)
     }
 
-    fn execute(&self, config: &CliConfig) -> Result<(), Box<dyn Error>> {
-        if let Some(inputs) = &config.base.input {
+    fn execute(&self, config: &dyn CliConfig) -> Result<(), Box<dyn Error>> {
+        let demo_config = config.as_any().downcast_ref::<DemoConfig>().unwrap();
+
+        if let Some(inputs) = &demo_config.input {
             for path in inputs {
                 count_file(path, config)?;
             }
@@ -22,7 +28,7 @@ impl Command for CountCommand {
     }
 }
 
-fn count_file(path: &std::path::Path, config: &CliConfig) -> Result<(), Box<dyn Error>> {
+fn count_file(path: &std::path::Path, config: &dyn CliConfig) -> Result<(), Box<dyn Error>> {
     if config.is_dry_run() {
         println!("Would count lines in: {}", path.display());
         return Ok(());
@@ -33,27 +39,20 @@ fn count_file(path: &std::path::Path, config: &CliConfig) -> Result<(), Box<dyn 
     }
 
     let count = BufReader::new(File::open(path)?).lines().count();
-    print_count(count, Some(path), config);
+    if config.verbosity() > 0 {
+        println!("{}: {} lines", path.display(), count);
+    } else {
+        println!("{count}");
+    }
     Ok(())
 }
 
-fn count_stdin(config: &CliConfig) -> Result<(), Box<dyn Error>> {
+#[allow(clippy::unnecessary_wraps)]
+fn count_stdin(config: &dyn CliConfig) -> Result<(), Box<dyn Error>> {
     if config.verbosity() > 0 {
         eprintln!("Reading from stdin...");
     }
     let count = BufReader::new(io::stdin()).lines().count();
-    print_count(count, None, config);
+    println!("{count}");
     Ok(())
-}
-
-fn print_count(count: usize, path: Option<&std::path::Path>, config: &CliConfig) {
-    if config.verbosity() > 0 {
-        if let Some(p) = path {
-            println!("{}: {} lines", p.display(), count);
-        } else {
-            println!("Total lines: {}", count);
-        }
-    } else {
-        println!("{}", count);
-    }
 }

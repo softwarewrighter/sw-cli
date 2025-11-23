@@ -1,30 +1,22 @@
 use std::path::PathBuf;
+use sw_cli::{BaseConfig, CliConfig as CliConfigTrait};
 
 #[derive(Debug, Clone)]
-pub struct BaseConfig {
-    pub verbose: bool,
-    pub dry_run: bool,
-    pub quiet: bool,
-    pub help: bool,
-    pub version: bool,
+pub struct DemoConfig {
+    pub base: BaseConfig,
     pub input: Option<Vec<PathBuf>>,
     pub output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CliConfig {
-    pub base: BaseConfig,
     pub pattern: Option<String>,
     pub count: bool,
     pub reverse: bool,
 }
 
-impl CliConfig {
-    pub fn verbosity(&self) -> u8 {
-        if self.base.quiet { 0 } else if self.base.verbose { 1 } else { 0 }
+impl CliConfigTrait for DemoConfig {
+    fn base(&self) -> &BaseConfig {
+        &self.base
     }
 
-    pub fn is_dry_run(&self) -> bool {
-        self.base.dry_run
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

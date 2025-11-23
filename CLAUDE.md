@@ -8,11 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Workspace Structure
 
-This is a Cargo workspace with three crates:
+This is a Cargo workspace with four crates:
 
 - **sw-cli** (main crate at root): Re-exports macros and contains the `version` module with `Version` and `BuildInfo` structs
 - **sw-cli-macros** (procedural macro crate): Contains `version!()`, `define_build_info!()`, and deprecated `create_version!()` macros
-- **examples/demo-cli** (example implementation): Demonstrates the 4-step integration pattern
+- **examples/demo-cli** (example implementation): Demonstrates the 4-step integration pattern for version info
+- **examples/working-cli-demo** (working CLI example): Full CLI application using Builder-Config-Dispatcher pattern
 
 **Important**: Procedural macros must be in a separate crate (Rust requirement). The main crate re-exports them for convenience, so users only depend on `sw-cli` and get everything.
 
@@ -55,6 +56,7 @@ The macro generates a file in `$OUT_DIR` rather than using `cargo:rustc-env` bec
 cargo build -p sw-cli
 cargo build -p sw-cli-macros
 cargo build -p demo-cli
+cargo build -p working-cli-demo
 ```
 
 ### Testing
@@ -89,7 +91,17 @@ cargo fmt --all -- --check
 
 # Run clippy with warnings as errors
 cargo clippy --all -- -D warnings
+
+# Auto-fix clippy warnings
+cargo clippy --fix --all --allow-dirty
 ```
+
+**Clippy Configuration**: The workspace uses pedantic lints configured in the root `Cargo.toml`:
+```toml
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+```
+All workspace members inherit these lints via `[lints] workspace = true`.
 
 ## Version Output Format
 

@@ -1,0 +1,46 @@
+Builder-Config-Dispatcher Pattern Demo
+=======================================
+
+A demonstration of the sw-cli framework's builder-config-dispatcher pattern
+for creating modular, extensible command-line applications.
+
+USAGE:
+    working-cli-demo [OPTIONS]
+
+STANDARD OPTIONS:
+    -V, --version            Show version information with build details
+    -h                       Show short help (quick reference)
+    --help                   Show this detailed help message
+    -v, --verbose            Increase output verbosity
+    -n, --dry-run            Show what would be done without executing
+
+DEMO-SPECIFIC OPTIONS:
+    -i, --input <FILE>       Input file(s) - can be specified multiple times
+    -o, --output <FILE>      Output file for processed results
+    -p, --pattern <PATTERN>  Pattern to search for (used with grep mode)
+    --count                  Count lines in input files
+    --reverse                Reverse the order of lines in output
+
+EXAMPLES:
+    # Count lines in a file
+    working-cli-demo --count -i file.txt
+
+    # Search for a pattern
+    working-cli-demo -p "TODO" -i src/*.rs
+
+    # Reverse file content (dry run)
+    working-cli-demo --reverse -i input.txt -o output.txt -n
+
+    # Copy with verbose output
+    working-cli-demo -v -i source.txt -o dest.txt
+
+COMMAND DISPATCH:
+    Commands are dispatched based on flags in priority order:
+    1. Version (--version, -V)
+    2. Help (--help, -h)
+    3. Count (--count)
+    4. Grep (--pattern)
+    5. Reverse (--reverse)
+    6. Copy (default if no specific command)
+
+For more information, see: https://github.com/softwarewrighter/sw-cli
