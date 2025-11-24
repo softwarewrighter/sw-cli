@@ -1,0 +1,6 @@
+A minimal CLI example demonstrating sw-cli macros.
+
+Features:
+- Echo text to output
+- Uppercase conversion
+- Repeat text N times

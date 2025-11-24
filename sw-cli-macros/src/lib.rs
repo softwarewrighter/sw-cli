@@ -546,8 +546,41 @@ pub fn cli_app(input: TokenStream) -> TokenStream {
             quote! { #name: matches.get_one::<String>(#name_str).map(::std::path::PathBuf::from) }
         } else if ty_string.contains("String") {
             quote! { #name: matches.get_one::<String>(#name_str).cloned() }
+        } else if ty_string.contains("usize") {
+            quote! {
+                #name: matches.get_one::<String>(#name_str)
+                    .and_then(|s| s.parse::<usize>().ok())
+            }
+        } else if ty_string.contains("u64") || ty_string.contains("u32") || ty_string.contains("u16") || ty_string.contains("u8") {
+            // For unsigned integer types, parse from string
+            let inner_ty = if ty_string.contains("u64") { quote!(u64) }
+                else if ty_string.contains("u32") { quote!(u32) }
+                else if ty_string.contains("u16") { quote!(u16) }
+                else { quote!(u8) };
+            quote! {
+                #name: matches.get_one::<String>(#name_str)
+                    .and_then(|s| s.parse::<#inner_ty>().ok())
+            }
+        } else if ty_string.contains("i64") || ty_string.contains("i32") || ty_string.contains("i16") || ty_string.contains("i8") || ty_string.contains("isize") {
+            // For signed integer types, parse from string
+            let inner_ty = if ty_string.contains("i64") { quote!(i64) }
+                else if ty_string.contains("i32") { quote!(i32) }
+                else if ty_string.contains("i16") { quote!(i16) }
+                else if ty_string.contains("isize") { quote!(isize) }
+                else { quote!(i8) };
+            quote! {
+                #name: matches.get_one::<String>(#name_str)
+                    .and_then(|s| s.parse::<#inner_ty>().ok())
+            }
+        } else if ty_string.contains("f64") || ty_string.contains("f32") {
+            // For float types, parse from string
+            let inner_ty = if ty_string.contains("f64") { quote!(f64) } else { quote!(f32) };
+            quote! {
+                #name: matches.get_one::<String>(#name_str)
+                    .and_then(|s| s.parse::<#inner_ty>().ok())
+            }
         } else {
-            quote! { #name: matches.get_one(#name_str).cloned() }
+            quote! { #name: matches.get_one::<String>(#name_str).cloned() }
         }
     });
 

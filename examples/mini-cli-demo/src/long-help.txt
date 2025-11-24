@@ -1,0 +1,27 @@
+Mini CLI Demo - Minimal sw-cli Macro Example
+=============================================
+
+This is the simplest possible example of using sw-cli macros.
+
+USAGE:
+    mini-cli-demo [OPTIONS] <TEXT>
+
+EXAMPLES:
+    # Echo text
+    mini-cli-demo "Hello, World!"
+
+    # Uppercase conversion
+    mini-cli-demo --uppercase "hello"
+
+    # Repeat text
+    mini-cli-demo --repeat 3 "test"
+
+    # Verbose mode
+    mini-cli-demo -v "test"
+
+    # Dry-run mode
+    mini-cli-demo -n --repeat 5 "test"
+
+CODE SIZE:
+    This entire application is just ~60 lines of code!
+    Compare to traditional clap + manual implementation: 150+ lines
