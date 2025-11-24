@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{Expr, parse_macro_input};
+use quote::{quote, format_ident};
+use syn::{Expr, parse_macro_input, Ident, Type, LitStr, LitChar, Token, parse::{Parse, ParseStream}, punctuated::Punctuated};
 
 /// Returns a formatted version string with build information.
 ///
@@ -321,6 +321,407 @@ pub fn dispatch(input: TokenStream) -> TokenStream {
                 __help_info::LONG_HELP.to_string()
             )
                 #(#command_registrations)*
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+// ====================
+// CLI App Builder Macro
+// ====================
+
+struct FieldDef {
+    name: Ident,
+    ty: Type,
+    short: Option<char>,
+    long: Option<String>,
+    help: Option<String>,
+    action: Option<String>,
+}
+
+impl Parse for FieldDef {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let name: Ident = input.parse()?;
+        input.parse::<Token![:]>()?;
+        let ty: Type = input.parse()?;
+
+        let mut short = None;
+        let mut long = None;
+        let mut help = None;
+        let mut action = None;
+
+        // Parse optional attributes (comma followed by key = value)
+        while input.peek(Token![,]) {
+            // Look ahead to see if this is an attribute or next field
+            // Attributes: comma, ident, =
+            // Next field: comma, ident, :
+            let fork = input.fork();
+            fork.parse::<Token![,]>()?;
+            if fork.peek(Ident) {
+                let _test_ident: Ident = fork.parse()?;
+                if fork.peek(Token![=]) {
+                    // This is an attribute
+                    input.parse::<Token![,]>()?;
+                    let attr: Ident = input.parse()?;
+                    input.parse::<Token![=]>()?;
+
+                    match attr.to_string().as_str() {
+                        "short" => {
+                            let ch: LitChar = input.parse()?;
+                            short = Some(ch.value());
+                        }
+                        "long" => {
+                            let s: LitStr = input.parse()?;
+                            long = Some(s.value());
+                        }
+                        "help" => {
+                            let s: LitStr = input.parse()?;
+                            help = Some(s.value());
+                        }
+                        "action" => {
+                            let a: Ident = input.parse()?;
+                            action = Some(a.to_string());
+                        }
+                        _ => return Err(syn::Error::new(attr.span(), "unknown attribute")),
+                    }
+                } else {
+                    // Next field, stop parsing attributes
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        Ok(FieldDef { name, ty, short, long, help, action })
+    }
+}
+
+struct CliAppInput {
+    name: String,
+    about: String,
+    config_name: Ident,
+    fields: Vec<FieldDef>,
+}
+
+impl Parse for CliAppInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut name = None;
+        let mut about = None;
+        let mut config_name = None;
+        let mut fields = Vec::new();
+
+        while !input.is_empty() {
+            let key: Ident = input.parse()?;
+            input.parse::<Token![:]>()?;
+
+            match key.to_string().as_str() {
+                "name" => {
+                    let s: LitStr = input.parse()?;
+                    name = Some(s.value());
+                    input.parse::<Token![,]>()?;
+                }
+                "about" => {
+                    let s: LitStr = input.parse()?;
+                    about = Some(s.value());
+                    input.parse::<Token![,]>()?;
+                }
+                "config" => {
+                    let id: Ident = input.parse()?;
+                    config_name = Some(id);
+                    input.parse::<Token![,]>()?;
+                }
+                "fields" => {
+                    let content;
+                    syn::braced!(content in input);
+                    let parsed_fields = Punctuated::<FieldDef, Token![,]>::parse_terminated(&content)?;
+                    fields = parsed_fields.into_iter().collect();
+                    if !input.is_empty() {
+                        input.parse::<Token![,]>()?;
+                    }
+                }
+                _ => return Err(syn::Error::new(key.span(), "unknown key")),
+            }
+        }
+
+        Ok(CliAppInput {
+            name: name.ok_or_else(|| input.error("missing 'name'"))?,
+            about: about.ok_or_else(|| input.error("missing 'about'"))?,
+            config_name: config_name.ok_or_else(|| input.error("missing 'config'"))?,
+            fields,
+        })
+    }
+}
+
+/// Generates a complete CLI application with config struct, builder, parser, and main function.
+///
+/// # Usage
+///
+/// ```ignore
+/// cli_app! {
+///     name: "my-app",
+///     about: "My CLI application",
+///     config: MyAppConfig,
+///     fields: {
+///         input: Option<Vec<PathBuf>>, short = 'i', long = "input", help = "Input files", action = Append,
+///         output: Option<PathBuf>, short = 'o', long = "output", help = "Output file",
+///         count: bool, long = "count", help = "Count lines",
+///     }
+/// }
+/// ```
+///
+/// This generates:
+/// - Config struct with the specified fields
+/// - `build_cli()` function that creates the clap Command
+/// - `parse_config()` function that parses ArgMatches into the config
+#[proc_macro]
+pub fn cli_app(input: TokenStream) -> TokenStream {
+    let cli_input = parse_macro_input!(input as CliAppInput);
+
+    let config_name = &cli_input.config_name;
+    let app_name = &cli_input.name;
+    let app_about = &cli_input.about;
+
+    // Generate config struct fields
+    let config_fields = cli_input.fields.iter().map(|f| {
+        let name = &f.name;
+        let ty = &f.ty;
+        quote! { pub #name: #ty }
+    });
+
+    // Generate clap args
+    let clap_args = cli_input.fields.iter().map(|f| {
+        let name_str = f.name.to_string();
+        let long = f.long.as_deref().unwrap_or(&name_str);
+        let help = f.help.as_deref().unwrap_or("");
+
+        let mut arg = quote! {
+            ::clap::Arg::new(#name_str)
+                .long(#long)
+                .help(#help)
+        };
+
+        if let Some(short) = f.short {
+            arg = quote! { #arg.short(#short) };
+        }
+
+        if let Some(action) = &f.action {
+            let action_ident = format_ident!("{}", action);
+            arg = quote! { #arg.action(::clap::ArgAction::#action_ident) };
+        } else {
+            // Determine action based on type
+            let ty = &f.ty;
+            let ty_string = quote!(#ty).to_string();
+            if ty_string.contains("bool") {
+                arg = quote! { #arg.action(::clap::ArgAction::SetTrue) };
+            } else if ty_string.contains("Vec") {
+                arg = quote! { #arg.action(::clap::ArgAction::Append) };
+            }
+        }
+
+        arg
+    });
+
+    // Generate parser for each field
+    let field_parsers = cli_input.fields.iter().map(|f| {
+        let name = &f.name;
+        let name_str = name.to_string();
+        let ty = &f.ty;
+        let ty_string = quote!(#ty).to_string();
+
+        if ty_string.contains("bool") {
+            quote! { #name: matches.get_flag(#name_str) }
+        } else if ty_string.contains("Vec") && ty_string.contains("PathBuf") {
+            quote! {
+                #name: matches.get_many::<String>(#name_str)
+                    .map(|vals| vals.map(::std::path::PathBuf::from).collect())
+            }
+        } else if ty_string.contains("Vec") {
+            quote! {
+                #name: matches.get_many::<String>(#name_str)
+                    .map(|vals| vals.cloned().collect())
+            }
+        } else if ty_string.contains("PathBuf") {
+            quote! { #name: matches.get_one::<String>(#name_str).map(::std::path::PathBuf::from) }
+        } else if ty_string.contains("String") {
+            quote! { #name: matches.get_one::<String>(#name_str).cloned() }
+        } else if ty_string.contains("usize") {
+            quote! {
+                #name: matches.get_one::<String>(#name_str)
+                    .and_then(|s| s.parse::<usize>().ok())
+            }
+        } else if ty_string.contains("u64") || ty_string.contains("u32") || ty_string.contains("u16") || ty_string.contains("u8") {
+            // For unsigned integer types, parse from string
+            let inner_ty = if ty_string.contains("u64") { quote!(u64) }
+                else if ty_string.contains("u32") { quote!(u32) }
+                else if ty_string.contains("u16") { quote!(u16) }
+                else { quote!(u8) };
+            quote! {
+                #name: matches.get_one::<String>(#name_str)
+                    .and_then(|s| s.parse::<#inner_ty>().ok())
+            }
+        } else if ty_string.contains("i64") || ty_string.contains("i32") || ty_string.contains("i16") || ty_string.contains("i8") || ty_string.contains("isize") {
+            // For signed integer types, parse from string
+            let inner_ty = if ty_string.contains("i64") { quote!(i64) }
+                else if ty_string.contains("i32") { quote!(i32) }
+                else if ty_string.contains("i16") { quote!(i16) }
+                else if ty_string.contains("isize") { quote!(isize) }
+                else { quote!(i8) };
+            quote! {
+                #name: matches.get_one::<String>(#name_str)
+                    .and_then(|s| s.parse::<#inner_ty>().ok())
+            }
+        } else if ty_string.contains("f64") || ty_string.contains("f32") {
+            // For float types, parse from string
+            let inner_ty = if ty_string.contains("f64") { quote!(f64) } else { quote!(f32) };
+            quote! {
+                #name: matches.get_one::<String>(#name_str)
+                    .and_then(|s| s.parse::<#inner_ty>().ok())
+            }
+        } else {
+            quote! { #name: matches.get_one::<String>(#name_str).cloned() }
+        }
+    });
+
+    let expanded = quote! {
+        #[derive(Debug, Clone)]
+        pub struct #config_name {
+            pub base: ::sw_cli::BaseConfig,
+            #(#config_fields),*
+        }
+
+        impl ::sw_cli::CliConfig for #config_name {
+            fn base(&self) -> &::sw_cli::BaseConfig {
+                &self.base
+            }
+
+            fn as_any(&self) -> &dyn ::std::any::Any {
+                self
+            }
+        }
+
+        pub fn build_cli() -> ::clap::Command {
+            ::clap::Command::new(#app_name)
+                .disable_version_flag(true)
+                .disable_help_flag(true)
+                .about(#app_about)
+                .args(::sw_cli::builder::standard_args())
+                #(.arg(#clap_args))*
+        }
+
+        pub fn parse_config(matches: &::clap::ArgMatches) -> #config_name {
+            #config_name {
+                base: ::sw_cli::builder::parse_base_config(matches),
+                #(#field_parsers),*
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+// ====================
+// CLI Command Macro
+// ====================
+
+struct CliCommandInput {
+    name: Ident,
+    config_type: Type,
+    can_handle: Expr,
+    execute: Expr,
+}
+
+impl Parse for CliCommandInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut name = None;
+        let mut config_type = None;
+        let mut can_handle = None;
+        let mut execute = None;
+
+        while !input.is_empty() {
+            let key: Ident = input.parse()?;
+            input.parse::<Token![:]>()?;
+
+            match key.to_string().as_str() {
+                "name" => {
+                    name = Some(input.parse()?);
+                    input.parse::<Token![,]>()?;
+                }
+                "config" => {
+                    config_type = Some(input.parse()?);
+                    input.parse::<Token![,]>()?;
+                }
+                "can_handle" => {
+                    can_handle = Some(input.parse()?);
+                    input.parse::<Token![,]>()?;
+                }
+                "execute" => {
+                    execute = Some(input.parse()?);
+                    if !input.is_empty() {
+                        input.parse::<Token![,]>()?;
+                    }
+                }
+                _ => return Err(syn::Error::new(key.span(), "unknown key")),
+            }
+        }
+
+        Ok(CliCommandInput {
+            name: name.ok_or_else(|| input.error("missing 'name'"))?,
+            config_type: config_type.ok_or_else(|| input.error("missing 'config'"))?,
+            can_handle: can_handle.ok_or_else(|| input.error("missing 'can_handle'"))?,
+            execute: execute.ok_or_else(|| input.error("missing 'execute'"))?,
+        })
+    }
+}
+
+/// Generates a command implementation with simplified syntax.
+///
+/// # Usage
+///
+/// ```ignore
+/// cli_command! {
+///     name: CountCommand,
+///     config: MyAppConfig,
+///     can_handle: |config: &MyAppConfig| config.count,
+///     execute: |config: &MyAppConfig| {
+///         println!("Counting...");
+///         Ok(())
+///     }
+/// }
+/// ```
+///
+/// This generates a struct and Command trait implementation with proper downcasting.
+#[proc_macro]
+pub fn cli_command(input: TokenStream) -> TokenStream {
+    let cmd_input = parse_macro_input!(input as CliCommandInput);
+
+    let name = &cmd_input.name;
+    let config_type = &cmd_input.config_type;
+    let can_handle_fn = &cmd_input.can_handle;
+    let execute_fn = &cmd_input.execute;
+
+    let expanded = quote! {
+        pub struct #name;
+
+        impl ::sw_cli::Command for #name {
+            fn can_handle(&self, config: &dyn ::sw_cli::CliConfig) -> bool {
+                if let Some(cfg) = config.as_any().downcast_ref::<#config_type>() {
+                    let handler: fn(&#config_type) -> bool = #can_handle_fn;
+                    handler(cfg)
+                } else {
+                    false
+                }
+            }
+
+            fn execute(&self, config: &dyn ::sw_cli::CliConfig) -> Result<(), Box<dyn ::std::error::Error>> {
+                let cfg = config.as_any()
+                    .downcast_ref::<#config_type>()
+                    .expect("Config type mismatch");
+
+                let executor: fn(&#config_type) -> Result<(), Box<dyn ::std::error::Error>> = #execute_fn;
+                executor(cfg)
+            }
         }
     };
 
