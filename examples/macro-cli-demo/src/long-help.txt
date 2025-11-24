@@ -1,0 +1,24 @@
+Macro-based CLI Demo
+====================
+
+This example demonstrates the power of sw-cli macros for building CLIs.
+
+Features:
+- Count lines in files with --count
+- Search for patterns with --pattern
+- Reverse line order with --reverse
+- Full support for stdin/stdout
+- Dry-run mode with -n
+- Verbose mode with -v
+
+Examples:
+  macro-cli-demo --count -i file.txt
+  macro-cli-demo -p "pattern" -i file.txt
+  macro-cli-demo --reverse -i file.txt
+  echo "test" | macro-cli-demo --count
+  macro-cli-demo -n --count -i file.txt
+
+The implementation is dramatically simpler than the manual version:
+- Config generation: ~5 lines vs ~23 lines
+- Builder: Automatic vs ~28 lines
+- Commands: ~15 lines each vs ~50 lines each

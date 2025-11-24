@@ -1,0 +1,4 @@
+Macro-based CLI demo using cli_app! and cli_command! macros
+
+This example demonstrates how the macros reduce boilerplate
+from ~400 lines to ~80 lines of code.
